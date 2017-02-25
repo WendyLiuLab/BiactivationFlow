@@ -21,8 +21,8 @@ Summarized data files will be located in inst/extdata.
 | Filename | Filename of original FCS file |
 | Experiment | Replicate ID |
 | antibody | "exp" (CD206/CD86) or "iso" (isotype controls) |
-| m1_concentration | [LPS+IFN-&gamma;] (ng/ml) |
-| m2_concentration | [IL-4+IL-13] (ng/ml) |
+| m1_concentration | \[LPS+IFN-&gamma;] (ng/ml) |
+| m2_concentration | \[IL-4+IL-13] (ng/ml) |
 | timepoint (if applicable) | Duration of incubation with cytokines (h) |
 
 See the vignettes for examples of normalizing data. Grouping on the `antibody` column is critical when plotting or summarizing data!
