@@ -1,0 +1,12 @@
+*.docx
+!style_template.docx
+*.pdf
+*.eps
+*.ai
+*.png
+*.md
+*.tex
+*.key
+*.html
+*.zip
+result-illustrations_files

@@ -1,0 +1,61 @@
+---
+title: "M1->M2 transactivation"
+author: "Tim D. Smith"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_document
+vignette: >
+  %\VignetteIndexEntry{M1->M2 transactivation}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r message=FALSE}
+library(FlowAnalysis)
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+names(m1_m2)
+names(m1_sus_m2)
+```
+
+## 2D density plots
+
+### Wash-out
+```{r}
+m1_m2 %>% filter(antibody=="exp") %>% render_density_plots()
+```
+
+### M1 sustained
+```{r}
+m1_sus_m2 %>% filter(antibody=="exp") %>% render_density_plots()
+```
+
+## Median plots
+
+### Wash-out
+For each experiment:
+```{r}
+m1_m2_medians = make_medians(m1_m2)
+render_median_plots(m1_m2_medians)
+```
+
+Summarized:
+```{r}
+normalized_m1_m2 = normalize_by_positive_controls(m1_m2)
+normalized_m1_m2_medians = make_medians(normalized_m1_m2)
+render_summary_median_plots(normalized_m1_m2_medians)
+```
+
+### M1 sustained
+For each experiment:
+```{r}
+m1_sus_m2_medians = make_medians(m1_sus_m2)
+render_median_plots(m1_sus_m2_medians)
+```
+
+Summarized:
+```{r}
+normalized_m1_sus_m2 = normalize_by_positive_controls(m1_sus_m2)
+normalized_m1_sus_m2_medians = make_medians(normalized_m1_sus_m2)
+render_summary_median_plots(normalized_m1_sus_m2_medians)
+```

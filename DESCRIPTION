@@ -1,0 +1,23 @@
+Package: FlowAnalysis
+Type: Package
+Title: What the package does (short line)
+Version: 1.0
+Date: 2015-02-24
+Author: Who wrote it
+Maintainer: Who to complain to <yourfault@somewhere.net>
+Description: More about what it does (maybe more than one line)
+License: MIT
+Imports:
+    dplyr,
+    ggplot2,
+    plyr,
+    scales,
+    stringr,
+    readr,
+    feather,
+    magrittr
+Suggests:
+    knitr
+VignetteBuilder: knitr
+LazyData: false
+RoxygenNote: 5.0.1

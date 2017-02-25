@@ -1,0 +1,12 @@
+packrat/**
+!packrat/packrat.lock
+!packrat/packrat.opts
+.Rproj.user
+*.swp
+*.swo
+.Rhistory
+# auto-generated
+man
+inst/doc
+NAMESPACE
+inst

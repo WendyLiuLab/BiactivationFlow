@@ -1,0 +1,65 @@
+---
+title: "MFI"
+author: "Tim D. Smith"
+date: "April 21, 2016"
+output:
+  html_document:
+    toc: true
+    fig_height: 3
+    fig_width: 4
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(dplyr)
+library(ggplot2)
+library(magrittr)
+
+# if(!exists("simultaneous")) devtools::load_all(".")
+library(FlowAnalysis)
+
+simultaneous_medians = simultaneous %>% make_medians %>% ungroup
+simultaneous_medians_mean = simultaneous_medians %>%
+  group_by(antibody, m1_concentration, m2_concentration) %>%
+  summarize(mean.CD86=mean(CD86), sd.CD86=sd(CD86),
+            mean.CD206=mean(CD206), sd.CD206=sd(CD206),
+            n=n()) %>%
+  mutate(sem.CD86=sd.CD86/sqrt(n), sem.CD206=sd.CD206/sqrt(n)) %>%
+  mutate(ymax.CD86=mean.CD86+sem.CD86, ymin.CD86=mean.CD86-sem.CD86,
+         ymax.CD206=mean.CD206+sem.CD206, ymin.CD206=mean.CD206-sem.CD206)
+```
+
+```{r simultaneous_m1_mfi}
+g = ggplot(simultaneous_medians, aes(m1_concentration, CD86, color=antibody)) +
+  facet_grid(m2_concentration~Experiment) +
+  geom_point() +
+  geom_line(aes(group=antibody)) +
+  theme_bw()
+print(g)
+
+g = ggplot(simultaneous_medians_mean, aes(m1_concentration, mean.CD86, color=antibody)) +
+  facet_grid(m2_concentration~.) +
+  geom_point() +
+  geom_line(aes(group=antibody)) +
+  geom_errorbar(aes(ymin=ymin.CD86, ymax=ymax.CD86), width=0.2) +
+  theme_bw()
+print(g)
+```
+
+```{r simultaneous_m2_mfi}
+g = ggplot(simultaneous_medians, aes(m2_concentration, CD206, color=antibody)) +
+  facet_grid(m1_concentration~Experiment) +
+  geom_point() +
+  geom_line(aes(group=antibody)) +
+  theme_bw()
+print(g)
+
+g = ggplot(simultaneous_medians_mean, aes(m2_concentration, mean.CD206, color=antibody)) +
+  facet_grid(m1_concentration~.) +
+  geom_point() +
+  geom_line(aes(group=antibody)) +
+  geom_errorbar(aes(ymin=ymin.CD206, ymax=ymax.CD206), width=0.2) +
+  theme_bw()
+print(g)
+```

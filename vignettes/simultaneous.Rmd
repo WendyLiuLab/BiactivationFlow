@@ -1,0 +1,40 @@
+---
+title: "Simultaneous stimulation"
+author: "Tim D. Smith"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_document
+vignette: >
+  %\VignetteIndexEntry{Simultaneous stimulation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteDepends{ggplot2}
+  \usepackage[utf8]{inputenc}
+---
+
+## Load package and data
+```{r message=FALSE}
+library(FlowAnalysis)
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+names(simultaneous)
+```
+
+## 2D density plots
+```{r}
+simultaneous %>% filter(antibody=="exp") %>% render_density_plots()
+```
+
+## Median plots
+
+For each experiment:
+```{r}
+medians = make_medians(simultaneous)
+render_median_plots(medians)
+```
+
+Summarized:
+```{r}
+normalized = normalize_by_positive_controls(simultaneous)
+normalized_medians = make_medians(normalized)
+render_summary_median_plots(normalized_medians)
+```

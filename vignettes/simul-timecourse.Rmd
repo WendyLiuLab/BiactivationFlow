@@ -1,0 +1,142 @@
+---
+title: "Simultaneous stimulation timecourse"
+author: "Tim D. Smith"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_document
+vignette: >
+  %\VignetteIndexEntry{Simultaneous stimulation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteDepends{ggplot2}
+  \usepackage[utf8]{inputenc}
+---
+
+## Load package and data
+```{r message=FALSE}
+library(FlowAnalysis)
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+names(simul_timecourse)
+```
+
+# Density plots
+```{r echo=FALSE}
+simul_timecourse %>%
+  filter(antibody == "exp") %>%
+  group_by(Experiment) %>%
+  do(plot=(ggplot(., aes(x=CD206, y=CD86)) +
+             facet_grid(timepoint~m1_concentration+m2_concentration) +
+             stat_density2d(aes(fill=..level..), geom="polygon") +
+             scale_fill_gradient(low="navyblue", high="red") +
+             scale_x_continuous(trans=biexp_trans(lim=100, decade.size=200)) +
+             scale_y_continuous(trans=biexp_trans(lim=100, decade.size=200)) +
+             coord_cartesian(xlim=c(-100,3e5), ylim=c(-100,3e5)) +
+             ggtitle(.$Experiment) +
+             theme_bw()) %T>%
+       print)
+```
+
+# Individual experiments (raw)
+```{r}
+medians = simul_timecourse %>% group_by(Experiment, timepoint, antibody, m1_concentration, m2_concentration) %>%
+    summarize(CD206 = median(CD206), CD86 = median(CD86))
+
+medians$group1 = paste(medians$m1_concentration, medians$antibody)
+medians$group2 = paste(medians$m2_concentration, medians$antibody)
+  
+medians %>% group_by(Experiment) %>%
+    do(
+      cd206_plot=(ggplot(., aes(timepoint, CD206, shape=antibody, color=m1_concentration, group=group1)) +
+                    facet_grid(m2_concentration~.) +
+                    geom_point() +
+                    geom_line() +
+                    ggtitle(paste0(.$Experiment, ": CD206 vs M1 concentration")) +
+                    theme_bw()) %T>%
+        print,
+      cd86_plot=(ggplot(., aes(timepoint, CD86, shape=antibody, color=m2_concentration, group=group2)) +
+                   facet_grid(m1_concentration~.) +
+                   geom_point() +
+                   geom_line() +
+                   ggtitle(paste0(.$Experiment, ": CD86 vs M2 concentration")) +
+                   theme_bw()) %T>%
+        print)
+```
+
+# Normalized
+```{r}
+normalize_by_null_condition_timepoint = function(df) {
+  blank_isotype = df %>%
+    filter(antibody == "exp", m1_concentration == 0, m2_concentration == 0, timepoint == "24h") %>%
+    group_by(Experiment) %>%
+    summarize(iso_CD206=median(CD206), iso_CD86=median(CD86))
+  
+  normalized = inner_join(df, blank_isotype, by="Experiment")
+  normalized$CD206 = normalized$CD206 / normalized$iso_CD206
+  normalized$CD86 = normalized$CD86 / normalized$iso_CD86
+  
+  normalized[! names(normalized) %in% c("iso_CD206", "iso_CD86")]
+}
+
+medians = simul_timecourse %>%
+  normalize_by_positive_controls_timepoint %>%
+  filter(antibody == "exp") %>%
+  group_by(Experiment, timepoint, m1_concentration, m2_concentration) %>%
+  summarize(CD206 = median(CD206), CD86 = median(CD86))
+  
+medians %>% group_by(Experiment) %>%
+    do(
+      cd206_plot=(ggplot(., aes(timepoint, CD206, color=m1_concentration, group=m1_concentration)) +
+                    facet_grid(m2_concentration~.) +
+                    geom_point() +
+                    geom_line() +
+                    ggtitle(paste0(.$Experiment, ": CD206 vs M1 concentration")) +
+                    theme_bw()) %T>%
+        print,
+      cd86_plot=(ggplot(., aes(timepoint, CD86, color=m2_concentration, group=m2_concentration)) +
+                   facet_grid(m1_concentration~.) +
+                   geom_point() +
+                   geom_line() +
+                   ggtitle(paste0(.$Experiment, ": CD86 vs M2 concentration")) +
+                   theme_bw()) %T>%
+        print)
+
+medians$M1xM2 = paste(medians$m1_concentration, medians$m2_concentration, sep="x")
+
+medians %>% group_by(Experiment) %>%
+  do(
+    plot=(ggplot(., aes(CD86, CD206, color=M1xM2)) +
+            geom_path(alpha=0.6, size=1) +
+            geom_point(aes(size=timepoint)) +
+            scale_size_discrete(range=c(3,7)) +
+            theme_bw()) %T>% print
+    )
+```
+
+```{r echo=FALSE}
+g = ggplot(medians, aes(CD86, CD206, color=Experiment)) +
+  facet_grid(timepoint~m1_concentration+m2_concentration) +
+  geom_point() +
+  theme_bw()
+print(g)
+```
+
+```{r echo=FALSE}
+median_means = medians %>%
+  group_by(m1_concentration, m2_concentration, timepoint) %>%
+  summarize(mean.CD86=mean(CD86), sd.CD86=sd(CD86),
+            mean.CD206=mean(CD206), sd.CD206=sd(CD206),
+            n=n()) %>%
+  mutate(sem.CD86=sd.CD86/sqrt(n), sem.CD206=sd.CD206/sqrt(n)) %>%
+  mutate(ymax.CD86=mean.CD86+sem.CD86, ymin.CD86=mean.CD86-sem.CD86,
+         ymax.CD206=mean.CD206+sem.CD206, ymin.CD206=mean.CD206-sem.CD206,
+         XbyX=paste(m1_concentration, m2_concentration, sep="x"))
+
+g = ggplot(median_means, aes(mean.CD86, mean.CD206, color=XbyX, group=XbyX, shape=timepoint)) +
+  geom_point(size=4) +
+  geom_path() +
+  geom_errorbar(aes(ymin=ymin.CD206, ymax=ymax.CD206)) +
+  geom_errorbarh(aes(xmin=ymin.CD86, xmax=ymax.CD86)) +
+  xlim(0, NA) + ylim(0, NA) +
+  theme_bw()
+print(g)
+```

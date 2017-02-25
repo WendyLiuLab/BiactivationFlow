@@ -1,0 +1,151 @@
+---
+title: "Pulse-chase"
+author: "Tim D. Smith"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_document
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteDepends{ggplot2}
+---
+
+Protocol:
+
+* t = -24h: Seed cells
+* t = 0h: Stimulate cells with M1 and M2 stimuli, simultaneously.
+* t = 24h: Harvest 24 h condition. For remaining conditions, rinse and replace media with blank D10.
+* t = 48h: Harvest 48 h condition. (24 h of decay time)
+* t = 72h: Harvest 72 h condition. (48 h of decay time)
+* t = 96h: Harvest 96 h condition. (72 h of decay time)
+
+```{r echo=FALSE,message=FALSE}
+library(FlowAnalysis)
+library(dplyr)
+library(ggplot2)
+library(testthat)
+```
+
+```{r echo=FALSE}
+# Load data
+pulsechase = load_experiments("../data-raw/pulse-chase", cleanup=rename_fluorophores) %>%
+  decorate_timecourse_from_filename()
+expect_equal(length(unique(pulsechase$Experiment)), 2)
+
+medians = pulsechase %>%
+  group_by(Experiment, antibody, timepoint, m1_concentration, m2_concentration) %>%
+  summarize(median.CD86=median(CD86), median.CD206=median(CD206))
+```
+
+# Populations
+Top facet row is LPS+IFN-$\gamma$ concentration in ng/ml. Bottom facet row is IL-4+IL-13 concentration in ng/ml.
+```{r densityplots,echo=FALSE}
+for(experiment in unique(pulsechase$Experiment)) {
+  g = pulsechase %>%
+    filter(Experiment == experiment) %>%
+    ggplot(aes(CD86)) +
+      facet_grid(antibody+timepoint~m1_concentration+m2_concentration) +
+      geom_density() +
+      geom_vline(data=filter(medians, Experiment == experiment), mapping=aes(xintercept=median.CD86), alpha=0.5) +
+      scale_x_continuous(trans=biexp_trans(lim=100, decade.size=800)) +
+      theme_bw() +
+      labs(title=sprintf("%s CD86", experiment))
+  print(g)
+  
+  g = pulsechase %>%
+    filter(Experiment == experiment) %>%
+    ggplot(aes(CD206)) +
+      facet_grid(antibody+timepoint~m1_concentration+m2_concentration) +
+      geom_density() +
+      geom_vline(data=filter(medians, Experiment == experiment), mapping=aes(xintercept=median.CD206), alpha=0.5) +
+      scale_x_continuous(trans=biexp_trans(lim=100, decade.size=800)) +
+      theme_bw() +
+      labs(title=sprintf("%s CD206", experiment))
+  print(g)
+}
+```
+
+# Medians vs. time
+Column facets are IL-4+IL-13 concentration in ng/ml. Row facets are LPS+IFN-$\gamma$ concentration in ng/ml.
+
+```{r echo=FALSE}
+for(experiment in unique(pulsechase$Experiment)) {
+  g = medians %>%
+    filter(Experiment == experiment) %>%
+    ggplot(aes(timepoint, median.CD86, color=antibody, group=antibody)) +
+      facet_grid(m1_concentration~m2_concentration) +
+      geom_point() +
+      geom_line() +
+      theme_bw() +
+      labs(title=sprintf("%s CD86", experiment))
+  print(g)
+  
+  g = medians %>%
+    filter(Experiment == experiment) %>%
+    ggplot(aes(timepoint, median.CD206, color=antibody, group=antibody)) +
+      facet_grid(m1_concentration~m2_concentration) +
+      geom_point() +
+      geom_line() +
+      theme_bw() +
+      labs(title=sprintf("%s CD206", experiment))
+  print(g)
+}
+```
+
+# Overview plots
+```{r echo=FALSE}
+pulsechase_normalized = normalize_by_positive_controls_timepoint(pulsechase)
+medians_normalized = pulsechase_normalized %>%
+  group_by(Experiment, antibody, timepoint, m1_concentration, m2_concentration) %>%
+  summarize(median.CD86=median(CD86), median.CD206=median(CD206))
+
+g = medians_normalized %>%
+  filter(antibody == "exp") %>%
+  ggplot(aes(timepoint, median.CD86, color=Experiment, group=Experiment)) +
+    facet_grid(m1_concentration~m2_concentration) +
+    geom_point() +
+    geom_line() +
+    stat_summary(mapping=aes(color=NULL, group=1), fun.y=mean, geom="point") +
+    stat_summary(mapping=aes(color=NULL, group=1), fun.y=mean, geom="line") +
+    theme_bw()
+#print(g)
+
+g = medians_normalized %>%
+  filter(antibody == "exp") %>%
+  ggplot(aes(timepoint, median.CD86, group=Experiment)) +
+    facet_grid(m1_concentration~m2_concentration) +
+    geom_point(alpha=0.2) +
+    geom_line(alpha=0.2) +
+    stat_summary(mapping=aes(color=NULL, group=1), fun.y=mean, geom="point") +
+    stat_summary(mapping=aes(color=NULL, group=1), fun.y=mean, geom="line") +
+    labs(x="Timepoint", y="CD86 intensity relative to 0.3x0") +
+    ylim(0, NA) +
+    theme_bw() +
+    theme(text=element_text(size=8))
+print(g)
+
+g = medians_normalized %>%
+  filter(antibody == "exp") %>%
+  ggplot(aes(timepoint, median.CD206, color=Experiment, group=Experiment)) +
+    facet_grid(m1_concentration~m2_concentration) +
+    geom_point() +
+    geom_line() +
+    stat_summary(mapping=aes(color=NULL, group=1), fun.y=mean, geom="point") +
+    stat_summary(mapping=aes(color=NULL, group=1), fun.y=mean, geom="line") +
+    theme_bw()
+#print(g)
+
+g = medians_normalized %>%
+  filter(antibody == "exp") %>%
+  ggplot(aes(timepoint, median.CD206, group=Experiment)) +
+    facet_grid(m1_concentration~m2_concentration) +
+    geom_point(alpha=0.2) +
+    geom_line(alpha=0.2) +
+    stat_summary(mapping=aes(color=NULL, group=1), fun.y=mean, geom="point") +
+    stat_summary(mapping=aes(color=NULL, group=1), fun.y=mean, geom="line") +
+    labs(x="Timepoint", y="CD206 intensity relative to 0x1") +
+    ylim(0, NA) +
+    theme_bw() +
+    theme(text=element_text(size=8))
+print(g)
+```
